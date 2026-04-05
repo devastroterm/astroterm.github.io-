@@ -201,11 +201,43 @@ h1 {
   pointer-events: none;
 }
 
+.ship-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .floating-ship {
   width: 100%;
   max-width: 600px;
   filter: drop-shadow(0 0 30px rgba(6, 182, 212, 0.3));
+  position: relative;
+  z-index: 2;
   animation: float 6s ease-in-out infinite;
+}
+
+/* Engine Fire Styles */
+.engine-fire {
+  position: absolute;
+  left: 10%; /* Place it behind the engines on the left */
+  width: 120px;
+  height: 40px;
+  background: linear-gradient(to right, transparent, rgba(6, 182, 212, 0.8), #fff);
+  filter: blur(15px);
+  border-radius: 50%;
+  z-index: 1;
+  transform-origin: right center;
+  animation: fire-pulse 0.1s infinite alternate;
+}
+
+.engine-top { top: 35%; width: 100px; opacity: 0.8; }
+.engine-mid { top: 50%; transform: translateY(-50%); width: 140px; }
+.engine-bottom { bottom: 35%; width: 100px; opacity: 0.8; }
+
+@keyframes fire-pulse {
+  from { transform: scaleX(0.8) opacity(0.6); filter: blur(15px); }
+  to { transform: scaleX(1.2) opacity(1); filter: blur(20px); }
 }
 
 @keyframes float {
