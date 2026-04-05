@@ -344,40 +344,65 @@ h1 {
 .cefr-item h3 { margin-bottom: 0.5rem; font-family: var(--font-heading); }
 .cefr-item p { color: var(--text-muted); font-size: 0.9rem; }
 
-/* Gallery */
-.gallery-container {
+/* Gallery V2 */
+.gallery-category {
+  margin-bottom: 4rem;
+}
+
+.gallery-category h3 {
+  margin-bottom: 2rem;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--secondary);
+}
+
+.gallery-grid-v2 {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 1.5rem;
-  padding: 100px 0;
 }
 
-.gallery-item {
-  position: relative;
-  border-radius: 24px;
+.gallery-grid-v2.ships,
+.gallery-grid-v2.characters {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.gallery-item-v2 {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
   overflow: hidden;
-  height: 400px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16/10;
 }
 
-.gallery-item img {
+.gallery-item-v2 img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s;
+  object-fit: contain; /* Good for transparent PNGs */
+  padding: 1.5rem;
 }
 
-.gallery-item:hover img {
-  transform: scale(1.05);
+.gallery-item-v2:hover {
+  transform: translateY(-5px) scale(1.02);
+  border-color: var(--primary);
+  background: rgba(124, 58, 237, 0.05);
 }
 
-.overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 2rem;
-  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-  font-weight: 600;
+/* Ship Cards extra styles */
+.ship-card {
+  aspect-ratio: 1/1;
+}
+
+.mini {
+  width: 60px;
+  height: 20px;
+  left: -10px; /* Offset for mini ships */
+  opacity: 0.6;
 }
 
 /* Footer */
