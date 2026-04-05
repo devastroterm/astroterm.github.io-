@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Xcode
+build/
+DerivedData/
+*.xcworkspace
+xcuserdata/
+*.moved-aside
+*.xcuserstate
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.development
+.env.production
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local

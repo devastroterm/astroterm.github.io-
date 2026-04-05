@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  PrivacyInfo.xcprivacy
+  AstroTerm - Apple Privacy Manifest (Zorunlu — iOS 17+ / Xcode 15+)
+
+  Bu dosya App Store'a gönderilmeden önce Xcode proje hedefine eklenmelidir:
+  Xcode → Proje → AstroTerm target → Build Phases →
+  Copy Bundle Resources → + → PrivacyInfo.xcprivacy
+
+  Google Mobile Ads SDK kendi privacy manifest'ini getiriyor,
+  bu dosya uygulamanın kendi veri kullanımını beyan eder.
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- ═══ Toplanan Veri Türleri ══════════════════════════════════════ -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+
+        <!-- Cihaz Kimliği — Reklam hedefleme için (AdMob tarafından kullanılır) -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeDeviceID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
+                <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+            </array>
+        </dict>
+
+        <!-- Kullanım Verileri — Oyun davranışı analizi -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeProductInteraction</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+            </array>
+        </dict>
+
+    </array>
+
+    <!-- ═══ Takip Yapılıyor mu? ═════════════════════════════════════════ -->
+    <!-- ATT izni olmadan izleme yapılmaz; izin alınırsa AdMob reklam kimliği okur -->
+    <key>NSPrivacyTracking</key>
+    <true/>
+
+    <!-- ═══ Takip Domainleri (AdMob / Google) ══════════════════════════ -->
+    <key>NSPrivacyTrackingDomains</key>
+    <array>
+        <string>googleadservices.com</string>
+        <string>googlesyndication.com</string>
+        <string>doubleclick.net</string>
+        <string>google-analytics.com</string>
+        <string>googletagmanager.com</string>
+        <string>admob.googleapis.com</string>
+    </array>
+
+    <!-- ═══ Kullanılan Özel API'ler ════════════════════════════════════ -->
+    <!-- UserDefaults: Ses tercihi ve yüksek skor kaydetmek için kullanılır -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- CA92.1: Uygulama kendi verilerini okumak/yazmak için -->
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+
+</dict>
+</plist>
