@@ -34,7 +34,7 @@ final class ExplosionNode: SKNode {
         addMainExplosionEmitter(color: color, size: size)
 
         // Gemi parçaları
-        addDebrisFragments(count: 6, color: color, spread: size * 1.2)
+        addDebrisFragments(count: 4, color: color, spread: size * 1.2)
 
         // Puan artı efekti (görsel geri bildirim)
         addScoreRing(color: color, radius: size * 0.8)
@@ -99,19 +99,20 @@ final class ExplosionNode: SKNode {
 
     // MARK: - Ana Patlama Parçacıkları
     private func addMainExplosionEmitter(color: UIColor, size: CGFloat) {
+        // Birleşik ana patlama emitter'ı (eskiden 3 ayrı emitter vardı)
         let emitter = SKEmitterNode()
-        emitter.particleBirthRate = 200
-        emitter.numParticlesToEmit = 60
-        emitter.particleLifetime = 0.6
-        emitter.particleLifetimeRange = 0.2
+        emitter.particleBirthRate = 80
+        emitter.numParticlesToEmit = 25
+        emitter.particleLifetime = 0.45
+        emitter.particleLifetimeRange = 0.15
         emitter.particlePositionRange = CGVector(dx: size * 0.3, dy: size * 0.3)
         emitter.particleSpeed = size * 3.0
         emitter.particleSpeedRange = size * 1.5
-        emitter.particleAlpha = 0.9
-        emitter.particleAlphaSpeed = -1.5
+        emitter.particleAlpha = 0.85
+        emitter.particleAlphaSpeed = -1.8
         emitter.particleScale = 0.12
         emitter.particleScaleRange = 0.06
-        emitter.particleScaleSpeed = -0.15
+        emitter.particleScaleSpeed = -0.20
         emitter.particleColor = color
         emitter.particleColorBlendFactor = 1.0
         emitter.particleBlendMode = .add
@@ -120,20 +121,20 @@ final class ExplosionNode: SKNode {
         emitter.zPosition = 4
         addChild(emitter)
 
-        // İkincil ateş parçacıkları
+        // Ateş parçacıkları (azaltıldı)
         let fireEmitter = SKEmitterNode()
-        fireEmitter.particleBirthRate = 120
-        fireEmitter.numParticlesToEmit = 40
-        fireEmitter.particleLifetime = 0.4
-        fireEmitter.particleLifetimeRange = 0.15
+        fireEmitter.particleBirthRate = 45
+        fireEmitter.numParticlesToEmit = 15
+        fireEmitter.particleLifetime = 0.30
+        fireEmitter.particleLifetimeRange = 0.10
         fireEmitter.particlePositionRange = CGVector(dx: size * 0.2, dy: size * 0.2)
         fireEmitter.particleSpeed = size * 1.5
         fireEmitter.particleSpeedRange = size
         fireEmitter.particleAlpha = 0.7
-        fireEmitter.particleAlphaSpeed = -1.8
-        fireEmitter.particleScale = 0.10
-        fireEmitter.particleScaleRange = 0.05
-        fireEmitter.particleScaleSpeed = -0.20
+        fireEmitter.particleAlphaSpeed = -2.2
+        fireEmitter.particleScale = 0.09
+        fireEmitter.particleScaleRange = 0.04
+        fireEmitter.particleScaleSpeed = -0.25
         fireEmitter.particleColor = UIColor(red: 1.0, green: 0.60, blue: 0.10, alpha: 1.0)
         fireEmitter.particleColorBlendFactor = 1.0
         fireEmitter.particleBlendMode = .add
@@ -141,28 +142,7 @@ final class ExplosionNode: SKNode {
         fireEmitter.emissionAngleRange = .pi * 2
         fireEmitter.zPosition = 3
         addChild(fireEmitter)
-
-        // Duman parçacıkları
-        let smokeEmitter = SKEmitterNode()
-        smokeEmitter.particleBirthRate = 50
-        smokeEmitter.numParticlesToEmit = 20
-        smokeEmitter.particleLifetime = 0.8
-        smokeEmitter.particleLifetimeRange = 0.3
-        smokeEmitter.particlePositionRange = CGVector(dx: size * 0.4, dy: size * 0.4)
-        smokeEmitter.particleSpeed = size * 0.8
-        smokeEmitter.particleSpeedRange = size * 0.5
-        smokeEmitter.particleAlpha = 0.4
-        smokeEmitter.particleAlphaSpeed = -0.5
-        smokeEmitter.particleScale = 0.20
-        smokeEmitter.particleScaleRange = 0.10
-        smokeEmitter.particleScaleSpeed = 0.10
-        smokeEmitter.particleColor = UIColor(white: 0.5, alpha: 0.5)
-        smokeEmitter.particleColorBlendFactor = 0.5
-        smokeEmitter.particleBlendMode = .alpha
-        smokeEmitter.emissionAngle = 0
-        smokeEmitter.emissionAngleRange = .pi * 2
-        smokeEmitter.zPosition = 2
-        addChild(smokeEmitter)
+        // Duman emitter kaldırıldı (performans)
     }
 
     // MARK: - Gemi Enkazı Parçaları

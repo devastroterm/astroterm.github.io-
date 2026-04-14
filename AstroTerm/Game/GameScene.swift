@@ -27,8 +27,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var gameLevel: CEFRLevel = .a1
     private var sessionWordPool: [WordPair] = []
     private var sessionShownTargets: Set<UUID> = []   // Session içinde hedef olarak gösterilen kelimeler
-    private var retryQueue: [WordPair] = []
     private var waveHadAnyKill = false   // Mevcut dalgada en az 1 düşman vuruldu mu?
+    private var lastLevelSync: CEFRLevel? // Son senkronize edilen seviye
 
     // MARK: - Zamanlayıcılar
     private var enemySpawnTimer: TimeInterval = 0
@@ -37,6 +37,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var waveCount = 0
     private var enemyShootTimer: TimeInterval = 0
     private var lastFireTime: TimeInterval = 0          // Ateş hızı sınırlayıcı
+    private var updateFrameCount: Int = 0               // Update döngüsü throttle sayacı
 
     // MARK: - Ses (AVAudioEngine)
     // Sadece düşük gecikmeli SFX (lazer, patlama vb.) için kullanılır.
@@ -85,7 +86,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func setupPhysics() {
         physicsWorld.gravity = .zero
         physicsWorld.contactDelegate = self
-        backgroundColor = UIColor(red: 0.05, green: 0.07, blue: 0.18, alpha: 1.0)
+        backgroundColor = .clear
     }
 
     // MARK: - Arka Plan
@@ -121,7 +122,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // MARK: - Oyuncu Gemisi
     private func setupPlayerShip() {
-        playerShip = PlayerShipNode()
+        // ViewModel'den seçili gemiyi al
+        if let ship = viewModel?.selectedShip {
+            playerShip = PlayerShipNode(ship: ship)
+        } else {
+            playerShip = PlayerShipNode()
+        }
+        
         playerShip.position = CGPoint(x: -size.width * 0.32, y: size.height * 0.05)
         playerShip.zPosition = 10
         addChild(playerShip)
@@ -150,11 +157,19 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         waveInProgress = true   // Yeni dalga başladı
         waveHadAnyKill = false  // Bu dalgadaki kill sayacını sıfırla
 
-        // Havuz boşsa sıfırdan oluştur (level geçişi performLevelTransition'da temizler)
+        // --- Level Sync (Kritik: Seviye sıfırlanmasını önler) ---
+        let vmLevel = viewModel.currentLevel
+        // Eğer seviye değiştiyse pool'u temizle ki yeni seviye kelimeleri gelsin
+        if vmLevel != gameLevel {
+            gameLevel = vmLevel
+            sessionWordPool.removeAll()
+            sessionShownTargets.removeAll()
+        }
+
+        // Havuz boşsa sıfırdan oluştur
         if sessionWordPool.isEmpty {
             let rawWords = WordDatabase.shared.words(for: gameLevel)
-
-            // Aynı kelimeyi (duplicate) havuza girmeden temizle
+            
             var uniqueWords: [WordPair] = []
             var seenTexts = Set<String>()
 
@@ -167,34 +182,25 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
 
             sessionWordPool = uniqueWords.shuffled()
-            sessionShownTargets.removeAll() // Havuz yenilendi → gösterim geçmişini sıfırla
+            sessionShownTargets.removeAll() 
         }
 
         // Güvenlik: Eğer veritabanından hiç kelime gelmediyse dur
         guard !sessionWordPool.isEmpty else { return }
 
-        // Retry queue karıştır (spam hissini azaltır)
-        retryQueue.shuffle()
-
         // --- Target (Hedef) Seçimi ---
-        let target: WordPair
-        if !retryQueue.isEmpty && Bool.random() {
-            // Yanlış cevaplanmış kelimeyi tekrar sor
-            target = retryQueue.removeFirst()
-        } else {
-            // Bu session'da henüz hedef olarak gösterilmemiş kelimeleri filtrele
-            var availablePool = sessionWordPool.filter { !sessionShownTargets.contains($0.id) }
+        // Bu session'da henüz hedef olarak gösterilmemiş kelimeleri filtrele
+        var availablePool = sessionWordPool.filter { !sessionShownTargets.contains($0.id) }
 
-            // Tüm kelimeler bir tur gösterildiyse geçmişi sıfırla ve baştan başla
-            if availablePool.isEmpty {
-                sessionShownTargets.removeAll()
-                availablePool = sessionWordPool
-            }
-
-            target = availablePool.randomElement()!
+        // Tüm kelimeler bir tur gösterildiyse geçmişi sıfırla ve baştan başla
+        if availablePool.isEmpty {
+            sessionShownTargets.removeAll()
+            availablePool = sessionWordPool
         }
 
-        // Hedefi "gösterildi" olarak işaretle
+        let target = availablePool.randomElement() ?? sessionWordPool.randomElement()!
+
+        // Hedefi "gösterildi" olarak işaretle (Böylece hemen tekrar etmez)
         sessionShownTargets.insert(target.id)
 
         // --- Çeldirici Seçimi (sadece mevcut level havuzundan) ---
@@ -303,10 +309,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             activeEnemies.remove(at: idx)
         }
         
-        if enemy.isCorrectTarget, let current = currentWave?.target {
-            if !retryQueue.contains(where: { $0.id == current.id }) {
-                retryQueue.append(current)
-            }
+        if enemy.isCorrectTarget {
+            // Hedef üsse ulaştı
         }
         
         enemy.removeFromParent()
@@ -620,11 +624,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         playWrongSound()
         playHaptic(.heavy)
 
-        if let current = currentWave?.target {
-            if !retryQueue.contains(where: { $0.id == current.id }) {
-                retryQueue.append(current)
-            }
-        }
+        // Yanlış vuruşta kelimeyi tekrar sormuyoruz, havuzdan yeni kelime gelecek.
         
         checkWaveComplete()
     }
@@ -668,11 +668,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Güç-Yukarı Toplama
     private func checkPowerupCollection() {
         for powerup in shieldPowerups {
-            let dist = CGPoint(x: powerup.position.x - playerShip.position.x,
-                               y: powerup.position.y - playerShip.position.y)
-            let distance = sqrt(dist.x * dist.x + dist.y * dist.y)
+            let dx = powerup.position.x - playerShip.position.x
+            let dy = powerup.position.y - playerShip.position.y
+            let distanceSq = dx * dx + dy * dy
 
-            if distance < 55 {
+            if distanceSq < 55 * 55 {
                 powerup.removeFromParent()
                 shieldPowerups.removeAll { $0 === powerup }
                 viewModel?.onShieldPickup?()
@@ -758,9 +758,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Yeni seviyeye geçerken eski kelime havuzunu ve gösterim geçmişini sıfırla
         sessionWordPool.removeAll()
         sessionShownTargets.removeAll()
-        retryQueue.removeAll()
 
         // Starfield geçişi (flash bittikten sonra)
+        self.backgroundColor = .clear
         transitionBackground(to: newLevel)
 
         playLevelUpSound()
@@ -795,17 +795,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         let deltaTime = lastUpdateTime == 0 ? 0 : min(currentTime - lastUpdateTime, 0.05)
         lastUpdateTime = currentTime
+        updateFrameCount &+= 1
 
         updatePlayerMovement(deltaTime: deltaTime)
-        updateTargeting()
         updateEnemyShooting(deltaTime: deltaTime)
-        activatePhysicsForVisibleEnemies()
         checkEnemiesPassingPlayer()
-        checkPowerupCollection()
         cleanupBullets()
         vm.tickCombo(deltaTime: deltaTime)
 
-        starfield?.scroll(by: 0.5)
+        // Her 2 frame'de bir: hedefleme ve fizik aktivasyonu
+        if updateFrameCount % 2 == 0 {
+            updateTargeting()
+            activatePhysicsForVisibleEnemies()
+        }
+
+        // Her 3 frame'de bir: powerup toplama kontrolü
+        if updateFrameCount % 3 == 0 {
+            checkPowerupCollection()
+        }
     }
 
     // MARK: - Duraklatma / Sıfırlama
@@ -833,6 +840,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             SKAction.fadeAlpha(to: 1.0, duration: 0.1)
         ]))
         
+        // Can kazandıktan sonra seviye senkronizasyonu
+        if let vm = viewModel {
+            self.gameLevel = vm.currentLevel
+        }
+        
         // Hızla bir sonraki dalgayı başlat
         startNextWave()
     }
@@ -840,7 +852,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     func resetScene() {
         sessionWordPool.removeAll()
         sessionShownTargets.removeAll()
-        retryQueue.removeAll()
         for enemy in activeEnemies { enemy.removeFromParent() }
         activeEnemies.removeAll()
         for bullet in activeBullets { bullet.removeFromParent() }

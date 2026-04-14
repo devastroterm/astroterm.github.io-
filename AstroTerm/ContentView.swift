@@ -9,6 +9,7 @@ struct ContentView: View {
     // MARK: - Uygulama Durumu
     enum AppScreen {
         case mainMenu
+        case shipSelection
         case onboarding
         case playing
         case gameOver
@@ -26,20 +27,48 @@ struct ContentView: View {
 
             // MARK: - Ana Menü
             case .mainMenu:
-                MainMenuView(viewModel: viewModel, onPlay: {
-                    if onboardingShown {
-                        // Onboarding daha önce gösterildiyse direkt oyuna geç
+                MainMenuView(
+                    viewModel: viewModel,
+                    onPlay: {
                         withAnimation(.easeInOut(duration: 0.4)) {
-                            currentScreen = .playing
+                            currentScreen = .shipSelection
                         }
-                    } else {
+                    },
+                    onShowTutorial: {
                         withAnimation(.easeInOut(duration: 0.4)) {
                             currentScreen = .onboarding
                         }
                     }
-                })
+                )
                 .transition(.asymmetric(
                     insertion: .opacity,
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+
+            // MARK: - Gemi Seçimi
+            case .shipSelection:
+                ShipSelectionView(
+                    viewModel: viewModel,
+                    onLaunch: {
+                        if onboardingShown {
+                            viewModel.reset()
+                            withAnimation(.easeInOut(duration: 0.4)) {
+                                currentScreen = .playing
+                            }
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.4)) {
+                                currentScreen = .onboarding
+                            }
+                        }
+                    },
+                    onBack: {
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            currentScreen = .mainMenu
+                        }
+                    }
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
 
@@ -49,7 +78,7 @@ struct ContentView: View {
                     onboardingShown = true
                     viewModel.reset()
                     withAnimation(.easeInOut(duration: 0.4)) {
-                        currentScreen = .playing
+                        currentScreen = .shipSelection
                     }
                 })
                 .transition(.asymmetric(

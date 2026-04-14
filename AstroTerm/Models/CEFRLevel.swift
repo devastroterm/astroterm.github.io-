@@ -45,12 +45,12 @@ enum CEFRLevel: String, CaseIterable, Codable, Identifiable {
     /// Düşman gemi hızı (nokta/saniye)
     var enemySpeed: CGFloat {
         switch self {
-        case .a1: return 50
-        case .a2: return 65
-        case .b1: return 80
-        case .b2: return 95
-        case .c1: return 110
-        case .c2: return 125
+        case .a1: return 62.5
+        case .a2: return 81.25
+        case .b1: return 100
+        case .b2: return 118.75
+        case .c1: return 137.5
+        case .c2: return 156.25
         }
     }
 
@@ -111,6 +111,12 @@ enum CEFRLevel: String, CaseIterable, Codable, Identifiable {
         case .c1: return (0.90, 0.15, 0.15)   // Kırmızı
         case .c2: return (0.30, 0.10, 0.50)   // Koyu Mor
         }
+    }
+
+    /// Seviye teması için ana renk (Lottie arka planı vb. için)
+    var themeColor: Color {
+        let components = enemyColorComponents
+        return Color(red: components.r, green: components.g, blue: components.b)
     }
 
     // MARK: - Gezegen Adı

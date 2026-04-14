@@ -11,14 +11,27 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: AstroTerm/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: com.oguzhanakdogan.astroterm
+        VERSION: "1.0.1"
+        BUILD: "3"
+        ENABLE_BITCODE: "NO"
+        DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+        PRODUCT_BUNDLE_IDENTIFIER: com.devastroterm.astroterm
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        DEVELOPMENT_TEAM: "" # User set this in Xcode
+        DEVELOPMENT_TEAM: 23Q3MA2NBQ
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1" # iPhone
     dependencies:
       - sdk: SpriteKit.framework
       - sdk: AVFoundation.framework
+      - package: Lottie
+      - package: GoogleMobileAds
+packages:
+  Lottie:
+    url: https://github.com/airbnb/lottie-ios.git
+    from: 4.4.1
+  GoogleMobileAds:
+    url: https://github.com/googleads/swift-package-manager-google-mobile-ads.git
+    from: 11.2.0
 schemes:
   AstroTerm:
     build:

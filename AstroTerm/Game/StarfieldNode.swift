@@ -117,17 +117,9 @@ final class StarfieldNode: SKNode {
         self.level = level
         self.theme = StarfieldNode.theme(for: level)
         super.init()
-        buildGradientBackground(size: size)
         
-        // buildNebulae(size: size)
-        
-        // buildStarTextures()
-        // buildStars(size: size, seed: level.hashValue)
-        // buildTwinkles()
-        
-        // if theme.hasStreaks {
-        //     buildStylizedComets(size: size)
-        // }
+        // Tüm görsel işlemler Lottie katmanına taşındığı için bura boşaltıldı.
+        // Bu node artık sadece diğer SpriteKit elementleri için bir referans noktasıdır.
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -139,44 +131,7 @@ final class StarfieldNode: SKNode {
 
     // MARK: - Degrade Arka Plan (GPU texture — SKShapeNode yok)
     private func buildGradientBackground(size: CGSize) {
-        if level == .a1 || level == .a2 || level == .b1 || level == .b2 || level == .c1 || level == .c2 {
-            let imageName = level.rawValue.lowercased() + "_background"
-            let bg = SKSpriteNode(imageNamed: imageName)
-            
-            // Aspect Fill Mantığı (Yayılmayı Önle)
-            let aspectRatio = bg.size.width / bg.size.height
-            let screenAspectRatio = size.width / size.height
-            
-            if aspectRatio > screenAspectRatio {
-                // Görsel ekrandan daha geniş (kenarlardan kırp)
-                bg.size = CGSize(width: size.height * aspectRatio, height: size.height)
-            } else {
-                // Görsel ekrandan daha dar/dikey (üst/alttan kırp)
-                bg.size = CGSize(width: size.width, height: size.width / aspectRatio)
-            }
-            
-            bg.zPosition = -20
-            addChild(bg)
-            return
-        }
-        
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let img = renderer.image { ctx in
-            // Üstten alta 3 renkli degrade
-            let colors = [theme.bgTop.cgColor, theme.bgMid.cgColor, theme.bgBottom.cgColor] as CFArray
-            let space  = CGColorSpaceCreateDeviceRGB()
-            guard let gradient = CGGradient(colorsSpace: space,
-                                            colors: colors,
-                                            locations: [0, 0.45, 1.0]) else { return }
-            ctx.cgContext.drawLinearGradient(gradient,
-                                             start: CGPoint(x: 0, y: 0),
-                                             end:   CGPoint(x: 0, y: size.height),
-                                             options: [])
-        }
-        let tex = SKTexture(image: img)
-        let bg  = SKSpriteNode(texture: tex, size: size)
-        bg.zPosition = -20
-        addChild(bg)
+        // Tüm seviyeler artık SwiftUI katmanındaki Lottie arka planını kullanıyor
     }
 
     // MARK: - Stilize Nebulalar (Overlap eden daire grupları)
@@ -351,23 +306,6 @@ final class StarfieldNode: SKNode {
 
     // MARK: - Paralaks Kaydırma
     func scroll(by delta: CGFloat) {
-        // Yıldızlar en yavaş kayar
-        for star in stars {
-            star.position.x -= delta * 0.08
-            let halfW = sceneSize.width / 2
-            if star.position.x < -halfW - 20 {
-                star.position.x += sceneSize.width + 40
-            }
-        }
-        
-        // Bulutlar biraz daha hızlı kayar
-        for cloud in clouds {
-            cloud.position.x -= delta * 0.15
-            let halfW = sceneSize.width / 2
-            if cloud.position.x < -halfW - cloud.size.width/2 {
-                cloud.position.x += sceneSize.width + cloud.size.width
-                cloud.position.y = -sceneSize.height/2 + CGFloat.random(in: 0...sceneSize.height * 0.3)
-            }
-        }
+        // Lottie kullanıldığı için kaydırma işlemi devre dışı.
     }
 }

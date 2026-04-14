@@ -35,31 +35,39 @@ final class AudioManager {
             if !isMusicPlaying { resumeMusic() }
             return
         }
-        
+
         guard let url = Bundle.main.url(forResource: fileName, withExtension: type) else {
             print("⚠️ HATA: Müzik dosyası BUNDLE içinde bulunamadı: \(fileName).\(type)")
-            print("👉 LÜTFEN Xcode'da 'Copy Bundle Resources' kısmına eklediğinizden emin olun.")
             return
         }
-        
-        do {
-            musicPlayer = try AVAudioPlayer(contentsOf: url)
-            musicPlayer?.numberOfLoops = -1 // Sonsuz döngü
-            musicPlayer?.prepareToPlay()
-            
-            // Kullanıcı müziği kapatmamışsa çal
-            if UserDefaults.standard.bool(forKey: "astroterm_isMusicEnabled") != false {
-                musicPlayer?.play()
-                isMusicPlaying = true
-                print("🎵 Müzik başlatıldı: \(fileName)")
+
+        let shouldPlay = UserDefaults.standard.object(forKey: "astroterm_isMusicEnabled") == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: "astroterm_isMusicEnabled")
+        let savedVolume = UserDefaults.standard.object(forKey: "astroterm_musicVolume") == nil
+            ? Float(0.5)
+            : UserDefaults.standard.float(forKey: "astroterm_musicVolume")
+
+        // AVAudioPlayer yükleme ve prepareToPlay main thread'i bloklamaması için
+        // background thread'de yapılır, play() main thread'e geri döner.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            do {
+                let player = try AVAudioPlayer(contentsOf: url)
+                player.numberOfLoops = -1
+                player.volume = savedVolume
+                player.prepareToPlay() // Disk I/O burada biter
+
+                DispatchQueue.main.async {
+                    self.musicPlayer = player
+                    if shouldPlay {
+                        player.play()
+                        self.isMusicPlaying = true
+                    }
+                }
+            } catch {
+                print("❌ Müzik yükleme hatası: \(error.localizedDescription)")
             }
-            
-            // Kayıtlı ses seviyesini uygula
-            let savedVolume = UserDefaults.standard.float(forKey: "astroterm_musicVolume")
-            setVolume(UserDefaults.standard.object(forKey: "astroterm_musicVolume") == nil ? 0.5 : savedVolume)
-            
-        } catch {
-            print("❌ Müzik yükleme hatası: \(error.localizedDescription)")
         }
     }
     
@@ -110,6 +118,9 @@ final class GameViewModel: ObservableObject {
     @Published var comboMultiplier: Double = 1.0
     @Published var comboTimeRemaining: Double = 0
     @Published var specialAbilityUses: Int = 3
+    @Published var totalWordsLearned: Int = 0           // İstatistik: Öğrenilen kelime sayısı
+    @Published var enemiesDestroyed: Int = 0            // İstatistik: Yok edilen düşman
+    @Published var wrongAnswers: Int = 0                // İstatistik: Yanlış cevaplar
     @Published var isGamePaused: Bool = false
     @Published var isGameOver: Bool = false
     @Published var showHint: Bool = false               // İpucu ikonu göster/gizle
@@ -120,11 +131,17 @@ final class GameViewModel: ObservableObject {
     @Published var revivesUsed: Int = 0         // Aynı oturumda kazanılan can sayısı
     @Published var isLevelUp: Bool = false       // Seviye atlama pop-up'ı yayını
     @Published var activeDialogue: DialogueEntry? = nil // Şu an gösterilen diyalog
+    
+    // MARK: - Gemi Seçimi
+    @Published var selectedShip: AstroShip = AstroShip.ships[0]
 
     /// Herhangi bir UI elemanının (Diyalog, Seviye Atlama, Duraklatma) oyunu bloklayıp bloklamadığı
     var isUIBlocking: Bool {
         isGamePaused || isLevelUp || activeDialogue != nil || isGameOver
     }
+
+    /// Menü eğitimi şu an aktif mi?
+    @Published var isMenuTutorialActive: Bool = false
 
 
     // MARK: - Ses Ayarları
@@ -146,6 +163,7 @@ final class GameViewModel: ObservableObject {
     // MARK: - İç Oyun Durumu
     private(set) var gameState = GameState()
     private var previousLevel: CEFRLevel = .a1
+    private var lastComboUIUpdateTime: TimeInterval = 0   // Combo UI throttle
 
     // MARK: - Joystick Girişi
     var joystickDelta: CGVector = .zero  // SpriteKit sahnesinin okuduğu joystick vektörü
@@ -161,13 +179,14 @@ final class GameViewModel: ObservableObject {
     @AppStorage("astroterm_highScore")        var storedHighScore: Int = 0
     @AppStorage("astroterm_lastLevel")        var storedLastLevel: String = "A1"
     @AppStorage("astroterm_onboardingShown")  var onboardingShown: Bool = false
+    @AppStorage("astroterm_menuTutorialShown") var menuTutorialShown: Bool = false
 
     // MARK: - Başlatma
     init() {
         // Ses ayarlarını yükle
-        self.isMusicEnabled = UserDefaults.standard.bool(forKey: "astroterm_isMusicEnabled") 
+        self.isMusicEnabled = UserDefaults.standard.bool(forKey: "astroterm_isMusicEnabled")
         if UserDefaults.standard.object(forKey: "astroterm_isMusicEnabled") == nil { self.isMusicEnabled = true }
-        
+
         self.isSfxEnabled = UserDefaults.standard.bool(forKey: "astroterm_sfxEnabled")
         if UserDefaults.standard.object(forKey: "astroterm_sfxEnabled") == nil { self.isSfxEnabled = true }
 
@@ -176,6 +195,11 @@ final class GameViewModel: ObservableObject {
 
         gameState.highScore = storedHighScore
         setupCallbacks()
+
+        // WordDatabase'i arka planda önceden yükle — oyun başlayınca main thread bloklanmasın
+        DispatchQueue.global(qos: .userInitiated).async {
+            _ = WordDatabase.shared
+        }
     }
 
     // MARK: - Geri Çağrımları Kur
@@ -262,6 +286,12 @@ final class GameViewModel: ObservableObject {
     func tickCombo(deltaTime: TimeInterval) {
         guard gameState.isComboActive else { return }
         gameState.tickCombo(deltaTime: deltaTime)
+
+        // SwiftUI re-render'ı throttle et: saniyede maks 10 güncelleme
+        let now = CACurrentMediaTime()
+        guard now - lastComboUIUpdateTime >= 0.10 else { return }
+        lastComboUIUpdateTime = now
+
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.isComboActive = self.gameState.isComboActive
@@ -349,13 +379,18 @@ final class GameViewModel: ObservableObject {
             self.isComboActive = self.gameState.isComboActive
             self.comboMultiplier = self.gameState.comboMultiplier
             self.comboTimeRemaining = self.gameState.comboTimeRemaining
+            
+            // İstatistikleri senkronize et
+            self.totalWordsLearned = self.gameState.totalWordsLearned
+            self.enemiesDestroyed = self.gameState.enemiesDestroyed
+            self.wrongAnswers = self.gameState.wrongAnswers
         }
     }
 
     // MARK: - Sıfırlama
     func reset() {
         restartTrigger += 1          // Sahneye "yeniden başlat" sinyali gönder
-        gameState.reset()
+        gameState.reset(customMaxLives: selectedShip.maxLives)
         gameState.highScore = storedHighScore
         previousLevel = .a1
         joystickDelta = .zero
@@ -406,9 +441,6 @@ final class GameViewModel: ObservableObject {
 
     // MARK: - İstatistikler
     var accuracy: Double { gameState.accuracy }
-    var enemiesDestroyed: Int { gameState.enemiesDestroyed }
-    var wavesCompleted: Int { gameState.wavesCompleted }
-    var totalWordsLearned: Int { gameState.totalWordsLearned }
 }
 
 // MARK: - Diyalog Modelleri ve Verisi

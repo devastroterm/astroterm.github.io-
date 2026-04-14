@@ -17,7 +17,7 @@ final class AdManager: NSObject {
 
         // ⚠️ rewardedProd: AdMob konsolundaki Rewarded Ad Unit ID'ni gir
         //    Format: ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY  (ortada / olmalı)
-        static let rewardedProd     = "ca-app-pub-7827833155145240/BURAYA_REWARDED_ID"
+        static let rewardedProd     = "ca-app-pub-7827833155145240/1673721117"
         static let interstitialProd = "ca-app-pub-7827833155145240/1673721117"
 
         #if DEBUG
@@ -30,8 +30,8 @@ final class AdManager: NSObject {
     }
 
     // MARK: - Yüklü Reklamlar
-    private var loadedRewardedAd: RewardedAd?
-    private var loadedInterstitialAd: InterstitialAd?
+    private var loadedRewardedAd: GADRewardedAd?
+    private var loadedInterstitialAd: GADInterstitialAd?
 
     // Aktif gösterim callback'leri
     private var rewardedCompletion: ((Bool) -> Void)?
@@ -43,7 +43,7 @@ final class AdManager: NSObject {
 
     // MARK: - SDK Başlatma
     static func setup() {
-        MobileAds.shared.start { _ in
+        GADMobileAds.sharedInstance().start { _ in
             AdManager.shared.preloadRewardedAd()
             AdManager.shared.preloadInterstitialAd()
         }
@@ -51,8 +51,8 @@ final class AdManager: NSObject {
 
     // MARK: - Ödüllü Reklam Ön Yükleme
     func preloadRewardedAd() {
-        let request = Request()
-        RewardedAd.load(with: AdUnitID.rewarded, request: request) { [weak self] ad, error in
+        let request = GADRequest()
+        GADRewardedAd.load(withAdUnitID: AdUnitID.rewarded, request: request) { [weak self] ad, error in
             guard let self else { return }
 
             if let error {
@@ -74,12 +74,18 @@ final class AdManager: NSObject {
             print("[AdMob] Rewarded reklam hazır")
 
             // showRewardedAd() çağrıldığında reklam yoktu — şimdi otomatik göster
-            if let cb = self.pendingRewardedCompletion,
-               let vc = self.rootViewController(),
-               let readyAd = self.loadedRewardedAd {
+            if let cb = self.pendingRewardedCompletion {
                 self.pendingRewardedCompletion = nil
-                DispatchQueue.main.async {
-                    self.presentRewardedAd(readyAd, from: vc, completion: cb)
+                
+                if let vc = self.rootViewController(),
+                   let readyAd = self.loadedRewardedAd {
+                    DispatchQueue.main.async {
+                        self.presentRewardedAd(readyAd, from: vc, completion: cb)
+                    }
+                } else {
+                    // VC bulunamadıysa veya reklam kaybolduysa
+                    print("[AdMob] Rewarded reklam hazır ama gösterilemiyor (VC yok)")
+                    DispatchQueue.main.async { cb(false) }
                 }
             }
         }
@@ -89,8 +95,8 @@ final class AdManager: NSObject {
 
     // MARK: - Geçiş Reklamı Ön Yükleme
     func preloadInterstitialAd() {
-        let request = Request()
-        InterstitialAd.load(with: AdUnitID.interstitial, request: request) { [weak self] ad, error in
+        let request = GADRequest()
+        GADInterstitialAd.load(withAdUnitID: AdUnitID.interstitial, request: request) { [weak self] ad, error in
             guard let self else { return }
             
             if let error {
@@ -108,13 +114,17 @@ final class AdManager: NSObject {
             self.loadedInterstitialAd?.fullScreenContentDelegate = self
             print("[AdMob] Interstitial reklam hazır")
             
-            if let cb = self.pendingInterstitialCompletion,
-               let vc = self.rootViewController(),
-               let readyAd = self.loadedInterstitialAd {
+            if let cb = self.pendingInterstitialCompletion {
                 self.pendingInterstitialCompletion = nil
-                self.interstitialCompletion = cb
-                DispatchQueue.main.async {
-                    readyAd.present(from: vc)
+                
+                if let vc = self.rootViewController(),
+                   let readyAd = self.loadedInterstitialAd {
+                    self.interstitialCompletion = cb
+                    DispatchQueue.main.async {
+                        readyAd.present(fromRootViewController: vc)
+                    }
+                } else {
+                    DispatchQueue.main.async { cb() }
                 }
             }
         }
@@ -132,17 +142,27 @@ final class AdManager: NSObject {
             presentRewardedAd(ad, from: vc, completion: completion)
         } else {
             // Reklam henüz yüklenmemiş — yüklenince otomatik göster
-            // completion(false) ÇAĞIRMA — yükleme spinner görünür kalsın
             print("[AdMob] Rewarded reklam yükleniyor, lütfen bekleyin...")
             pendingRewardedCompletion = completion
             preloadRewardedAd()
+            
+            // ── TIMEOUT ──
+            // Eğer reklam 3 saniye içinde hazır olmazsa UI kilitlenmesin diye hata döndür
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                guard let self = self else { return }
+                if let cb = self.pendingRewardedCompletion {
+                    print("[AdMob] Rewarded timeout süresi aşıldı.")
+                    self.pendingRewardedCompletion = nil
+                    cb(false)
+                }
+            }
         }
     }
 
-    private func presentRewardedAd(_ ad: RewardedAd, from vc: UIViewController, completion: @escaping (Bool) -> Void) {
+    private func presentRewardedAd(_ ad: GADRewardedAd, from vc: UIViewController, completion: @escaping (Bool) -> Void) {
         rewardedCompletion = completion
         rewardedDidEarnReward = false
-        ad.present(from: vc) { [weak self] in
+        ad.present(fromRootViewController: vc) { [weak self] in
             self?.rewardedDidEarnReward = true
         }
     }
@@ -156,14 +176,14 @@ final class AdManager: NSObject {
 
         if let ad = loadedInterstitialAd {
             interstitialCompletion = completion
-            ad.present(from: vc)
+            ad.present(fromRootViewController: vc)
         } else {
             print("[AdMob] Interstitial reklam yükleniyor, lütfen bekleyin...")
             pendingInterstitialCompletion = completion
             preloadInterstitialAd()
             
-            // Eğer reklam 2 saniye içinde hazır olmazsa Timeout ile oyunu başlat
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            // Eğer reklam 2.5 saniye içinde hazır olmazsa Timeout ile oyunu başlat
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
                 guard let self = self else { return }
                 if let cb = self.pendingInterstitialCompletion {
                     print("[AdMob] Interstitial timeout süresi aşıldı, reklam atlanıyor...")
@@ -190,18 +210,18 @@ final class AdManager: NSObject {
     }
 }
 
-// MARK: - FullScreenContentDelegate
-extension AdManager: FullScreenContentDelegate {
+// MARK: - GADFullScreenContentDelegate
+extension AdManager: GADFullScreenContentDelegate {
 
-    func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
-        if ad is RewardedAd {
+    func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+        if ad is GADRewardedAd {
             loadedRewardedAd = nil
             preloadRewardedAd()
             let cb = rewardedCompletion
             let earned = rewardedDidEarnReward
             rewardedCompletion = nil
             DispatchQueue.main.async { cb?(earned) }
-        } else if ad is InterstitialAd {
+        } else if ad is GADInterstitialAd {
             loadedInterstitialAd = nil
             preloadInterstitialAd()
             let cb = interstitialCompletion
@@ -210,14 +230,14 @@ extension AdManager: FullScreenContentDelegate {
         }
     }
 
-    func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+    func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         print("[AdMob] Reklam gösterilemedi: \(error.localizedDescription)")
-        if ad is RewardedAd {
+        if ad is GADRewardedAd {
             let cb = rewardedCompletion
             rewardedCompletion = nil
             DispatchQueue.main.async { cb?(false) }
             preloadRewardedAd()
-        } else if ad is InterstitialAd {
+        } else if ad is GADInterstitialAd {
             let cb = interstitialCompletion
             interstitialCompletion = nil
             DispatchQueue.main.async { cb?() }

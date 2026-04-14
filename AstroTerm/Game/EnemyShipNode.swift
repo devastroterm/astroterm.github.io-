@@ -238,15 +238,28 @@ final class EnemyShipNode: SKNode {
         // Kelime etiketi
         wordLabel = SKLabelNode(text: wordPair.english)
         wordLabel.fontName = "AvenirNext-Bold"
-        wordLabel.fontSize = 12
+        
+        // Dinamik font büyüklüğü (Uzunluk arttıkça küçült)
+        let count = wordPair.english.count
+        if count > 20 {
+            wordLabel.fontSize = 8.5
+        } else if count > 15 {
+            wordLabel.fontSize = 10
+        } else {
+            wordLabel.fontSize = 12
+        }
+        
         wordLabel.fontColor = .white
         wordLabel.horizontalAlignmentMode = .center
         wordLabel.verticalAlignmentMode = .center
         wordLabel.zPosition = 12
 
-        // Baloncuk arka planı — daha dar ve kompakt
-        let textWidth = CGFloat(wordPair.english.count) * 7.0 + 12
-        wordBubble = SKShapeNode(rectOf: CGSize(width: max(textWidth, 44), height: 20), cornerRadius: 6)
+        // Baloncuk arka planı — Max genişlik sınırı ile
+        let charWidth: CGFloat = wordLabel.fontSize * 0.55 // Yaklaşık karakter genişliği
+        let textWidth = CGFloat(count) * charWidth + 14
+        let maxWidth: CGFloat = 160
+        
+        wordBubble = SKShapeNode(rectOf: CGSize(width: min(max(textWidth, 44), maxWidth), height: 18), cornerRadius: 5)
         wordBubble.fillColor = UIColor(red: 0.05, green: 0.05, blue: 0.20, alpha: 0.88)
         wordBubble.strokeColor = UIColor(red: 0.60, green: 0.60, blue: 0.90, alpha: 0.70)
         wordBubble.lineWidth = 1.0
@@ -269,15 +282,11 @@ final class EnemyShipNode: SKNode {
         addChild(arrow)
     }
 
-    // MARK: - Seçim Işıltısı
+    // MARK: - Seçim Işıltısı (Kaldırıldı)
     private func buildSelectionGlow() {
         selectionGlow = SKShapeNode(circleOfRadius: 50)
-        selectionGlow.fillColor = UIColor(red: 0.30, green: 1.0, blue: 0.50, alpha: 0.12)
-        selectionGlow.strokeColor = UIColor(red: 0.30, green: 1.0, blue: 0.50, alpha: 0.70)
-        selectionGlow.lineWidth = 2
-        selectionGlow.zPosition = 8
         selectionGlow.alpha = 0
-        addChild(selectionGlow)
+        // addChild(selectionGlow) // Kullanıcı isteğiyle yeşil ışık kaldırıldı
     }
 
     // MARK: - Fizik
@@ -307,17 +316,11 @@ final class EnemyShipNode: SKNode {
         ]))
     }
 
-    // MARK: - Seçim Vurgusu (Joystick ile hedefleme)
+    // MARK: - Seçim Vurgusu (Kaldırıldı)
     func setHighlighted(_ highlighted: Bool) {
-        let alpha: CGFloat = highlighted ? 1.0 : 0.0
-        selectionGlow.run(SKAction.fadeAlpha(to: alpha, duration: 0.2))
-
-        if highlighted {
-            let rotate = SKAction.rotate(byAngle: .pi * 2, duration: 2.0)
-            selectionGlow.run(SKAction.repeatForever(rotate))
-        } else {
-            selectionGlow.removeAllActions()
-        }
+        // let alpha: CGFloat = highlighted ? 1.0 : 0.0
+        // selectionGlow.run(SKAction.fadeAlpha(to: alpha, duration: 0.2))
+        // Yeşil vurgu kaldırıldı
     }
 
     // MARK: - Özel Yetenek Efekti (Yavaşlatma)

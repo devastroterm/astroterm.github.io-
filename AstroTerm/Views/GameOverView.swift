@@ -23,49 +23,41 @@ struct GameOverView: View {
     @State private var buttonsOpacity: Double = 0
 
     var body: some View {
-        ZStack {
-            // MARK: - Arka Plan
-            LinearGradient(
-                colors: [
-                    Color(red: 0.12, green: 0.03, blue: 0.22),
-                    Color(red: 0.05, green: 0.05, blue: 0.18),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+        GeometryReader { geo in
+            ZStack {
+                // MARK: - Arka Plan (Derin Uzay)
+                Color(red: 0.02, green: 0.01, blue: 0.08).ignoresSafeArea()
+                
+                // Nebula parlaması (Onboarding tonunda mavi)
+                RadialGradient(
+                    colors: [Color.blue.opacity(0.15), Color.clear],
+                    center: .center,
+                    startRadius: 100,
+                    endRadius: 600
+                )
+                .ignoresSafeArea()
 
-            // Yıldız parçacıkları (dekoratif)
-            starsDecoration
+                // Yıldız dekorasyonu
+                starsDecoration
 
-            // MARK: - Landscape düzeni: Sol sütun (başlık + puan) | Sağ sütun (istatistik + butonlar)
-            HStack(spacing: 20) {
-
-                // SOL SÜTUN: Başlık + Büyük Puan
-                VStack(spacing: 12) {
-                    gameOverTitle
-                        .opacity(titleOpacity)
-                        .offset(y: titleOffset)
-
-                    scoreBlock
-                        .opacity(cardOpacity)
-                        .offset(y: cardOffset)
-                }
-                .frame(maxWidth: .infinity)
-
-                // SAĞ SÜTUN: İstatistikler + Butonlar
-                VStack(spacing: 12) {
-                    statsGridCompact
-                        .opacity(cardOpacity)
-                        .offset(y: cardOffset)
-
+                // MARK: - İçerik (Yatay Bölünmüş)
+                HStack(spacing: 40) {
+                    // SOL TARAF: Başlık ve İstatistikler
+                    VStack(alignment: .leading, spacing: 20) {
+                        gameOverTitle
+                        
+                        scoreStatsPanel
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // SAĞ TARAF: Butonlar
                     actionButtons
-                        .opacity(buttonsOpacity)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, max(40, geo.safeAreaInsets.leading))
+                .padding(.vertical, 20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
         }
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
@@ -98,252 +90,119 @@ struct GameOverView: View {
         .ignoresSafeArea()
     }
 
-    // MARK: - Başlık
     private var gameOverTitle: some View {
-        VStack(spacing: 8) {
-            Text("💫")
-                .font(.system(size: 56))
-
-            Text("OYUN BİTTİ")
-                .font(.system(size: 36, weight: .black, design: .rounded))
+        VStack(alignment: .leading, spacing: 4) {
+            Text("BAĞLANTI KESİLDİ")
+                .font(.system(size: 10, weight: .black))
+                .foregroundColor(.cyan.opacity(0.6))
+                .tracking(3)
+            
+            Text("GÖREV TAMAMLANAMADI")
+                .font(.system(size: 28, weight: .black, design: .rounded))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [
-                            Color(red: 1.0, green: 0.40, blue: 0.20),
-                            Color(red: 1.0, green: 0.70, blue: 0.10),
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                        colors: [.white, .blue.opacity(0.7)],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
                 )
-                .shadow(color: Color(red: 1.0, green: 0.50, blue: 0.10).opacity(0.60), radius: 12)
-
-            Text("Seviye: \(viewModel.currentLevel.rawValue)")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(Color.white.opacity(0.70))
+                .shadow(color: .blue.opacity(0.5), radius: 10)
+            
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                Text("SEVIYE \(viewModel.currentLevel.rawValue)")
+            }
+            .font(.system(size: 14, weight: .bold))
+            .foregroundColor(.white.opacity(0.4))
         }
     }
 
-    // MARK: - Sol Sütun: Büyük Puan Bloğu
-    private var scoreBlock: some View {
-        VStack(spacing: 6) {
-            Text("PUAN")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color.white.opacity(0.55))
-                .tracking(3)
-
-            Text("\(viewModel.score)")
-                .font(.system(size: 48, weight: .black, design: .monospaced))
-                .foregroundColor(Color(red: 1.0, green: 0.90, blue: 0.20))
-                .shadow(color: Color(red: 1.0, green: 0.80, blue: 0.10).opacity(0.50), radius: 10)
-
-            if viewModel.score == viewModel.highScore && viewModel.score > 0 {
-                HStack(spacing: 6) {
-                    Image(systemName: "trophy.fill")
-                        .foregroundColor(Color(red: 1.0, green: 0.80, blue: 0.10))
-                        .font(.system(size: 13))
-                    Text("Yeni Rekor!")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(Color(red: 1.0, green: 0.90, blue: 0.30))
-                }
+    // MARK: - Birleşik Skor ve İstatistik Paneli
+    private var scoreStatsPanel: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Ana Skor
+            VStack(alignment: .leading, spacing: 2) {
+                Text("TOPLAM SKOR")
+                    .font(.system(size: 8, weight: .black))
+                    .foregroundColor(.white.opacity(0.4))
+                    .tracking(2)
+                
+                Text("\(viewModel.score)")
+                    .font(.system(size: 36, weight: .black, design: .monospaced))
+                    .foregroundColor(.orange)
+                    .shadow(color: .orange.opacity(0.5), radius: 10)
+            }
+            
+            Rectangle()
+                .fill(Color.white.opacity(0.1))
+                .frame(height: 1)
+            
+            // Alt İstatistikler
+            HStack(spacing: 30) {
+                miniStat(label: "DOĞRU", value: "\(viewModel.enemiesDestroyed)", color: .green)
+                miniStat(label: "YANLIŞ", value: "\(viewModel.gameState.wrongAnswers)", color: .red)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(Color(red: 0.06, green: 0.08, blue: 0.22).opacity(0.92))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-                )
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white.opacity(0.05))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
         )
-        .shadow(color: Color.black.opacity(0.40), radius: 16)
     }
 
-    // MARK: - Sağ Sütun: Kompakt İstatistik Grid'i
-    private var statsGridCompact: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible()),
-            GridItem(.flexible()),
-        ], spacing: 8) {
-            statCell(
-                icon: "checkmark.circle.fill",
-                color: Color(red: 0.20, green: 0.80, blue: 0.35),
-                value: "\(viewModel.enemiesDestroyed)",
-                label: "Doğru"
-            )
-            statCell(
-                icon: "xmark.circle.fill",
-                color: Color(red: 0.90, green: 0.25, blue: 0.15),
-                value: "\(viewModel.gameState.wrongAnswers)",
-                label: "Yanlış"
-            )
-            statCell(
-                icon: "percent",
-                color: Color(red: 0.30, green: 0.65, blue: 1.0),
-                value: String(format: "%.0f%%", viewModel.accuracy),
-                label: "Doğruluk"
-            )
-            statCell(
-                icon: "book.fill",
-                color: Color(red: 0.60, green: 0.35, blue: 1.0),
-                value: "\(viewModel.totalWordsLearned)",
-                label: "Öğrenilen"
-            )
-            statCell(
-                icon: "flag.fill",
-                color: Color(red: 1.0, green: 0.55, blue: 0.10),
-                value: "\(viewModel.wavesCompleted)",
-                label: "Dalga"
-            )
-            statCell(
-                icon: "crown.fill",
-                color: Color(red: 1.0, green: 0.80, blue: 0.10),
-                value: "\(viewModel.highScore)",
-                label: "Rekor"
-            )
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(Color(red: 0.06, green: 0.08, blue: 0.22).opacity(0.92))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-                )
-        )
-        .shadow(color: Color.black.opacity(0.40), radius: 16)
-    }
-
-    private func statCell(icon: String, color: Color, value: String, label: String) -> some View {
-        VStack(spacing: 3) {
-            Image(systemName: icon)
-                .foregroundColor(color)
-                .font(.system(size: 16))
-            Text(value)
-                .font(.system(size: 15, weight: .black, design: .monospaced))
-                .foregroundColor(.white)
+    private func miniStat(label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 4) {
             Text(label)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundColor(Color.white.opacity(0.50))
-                .tracking(1)
+                .font(.system(size: 8, weight: .black))
+                .foregroundColor(.white.opacity(0.4))
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                .foregroundColor(color)
         }
     }
 
     // MARK: - Aksiyon Butonları
     private var actionButtons: some View {
-        VStack(spacing: 10) {
-
+        VStack(spacing: 12) {
             if viewModel.revivesUsed < 2 {
-                // ── Reklam İzle Can Kazan ──
                 Button(action: handleRevive) {
-                    ZStack {
-                        if isLoadingAd && showRewardedStartBadge {
-                            HStack(spacing: 8) {
-                                ProgressView().tint(.white)
-                                Text("Yükleniyor...")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                            }
-                        } else {
-                            HStack(spacing: 10) {
-                                Image(systemName: "play.tv.fill")
-                                    .font(.system(size: 18, weight: .bold))
-                                Text("CAN KAZAN")
-                                    .font(.system(size: 18, weight: .black))
-                                    .tracking(1)
-                            }
-                            .foregroundColor(.white)
-                        }
+                    HStack {
+                        Image(systemName: "bolt.heart.fill")
+                        Text("YENIDEN CANLAN")
+                            .font(.system(size: 14, weight: .black))
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 58)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.15, green: 0.85, blue: 0.35),
-                                        Color(red: 0.05, green: 0.50, blue: 0.15),
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    )
-                    .shadow(color: Color(red: 0.15, green: 0.85, blue: 0.35).opacity(0.50), radius: 12, y: 6)
+                    .foregroundColor(.white)
+                    .frame(width: 220, height: 44)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.green.opacity(0.8)))
+                    .shadow(color: .green.opacity(0.3), radius: 10)
                 }
                 .buttonStyle(ScaleButtonStyle())
-                .disabled(isLoadingAd)
             }
 
-            // ── Tekrar Oyna ──
             Button(action: handleRestart) {
-                ZStack {
-                    if isLoadingAd && !showRewardedStartBadge {
-                        HStack(spacing: 8) {
-                            ProgressView().tint(.white)
-                            Text("Hazırlanıyor...")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                    } else {
-                        HStack(spacing: 10) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 18, weight: .bold))
-                            Text("TEKRAR OYNA")
-                                .font(.system(size: 18, weight: .black))
-                                .tracking(2)
-                        }
-                        .foregroundColor(.white)
-                    }
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                    Text("TEKRAR DENE")
+                        .font(.system(size: 14, weight: .black))
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 58)
-                .background(
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.90, green: 0.45, blue: 0.05),
-                                    Color(red: 0.65, green: 0.25, blue: 0.02),
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                )
-                .shadow(color: Color(red: 0.90, green: 0.45, blue: 0.05).opacity(0.50), radius: 12, y: 6)
+                .foregroundColor(.white)
+                .frame(width: 220, height: 44)
+                .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange.opacity(0.8)))
+                .shadow(color: .orange.opacity(0.3), radius: 10)
             }
             .buttonStyle(ScaleButtonStyle())
-            .disabled(isLoadingAd)
 
-            // ── Ana Menü ──
             Button(action: onMenu) {
-                HStack(spacing: 10) {
+                HStack {
                     Image(systemName: "house.fill")
-                        .font(.system(size: 16, weight: .bold))
-                    Text("ANA MENÜ")
-                        .font(.system(size: 16, weight: .bold))
-                        .tracking(2)
+                    Text("ANA MENÜYE DÖN")
                 }
-                .foregroundColor(Color.white.opacity(0.80))
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(Color.white.opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18)
-                                .strokeBorder(Color.white.opacity(0.20), lineWidth: 1)
-                        )
-                )
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.white.opacity(0.4))
+                .padding(.top, 4)
             }
             .buttonStyle(ScaleButtonStyle())
-            .disabled(isLoadingAd)
         }
     }
 

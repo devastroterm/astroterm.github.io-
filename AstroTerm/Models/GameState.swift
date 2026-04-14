@@ -1,7 +1,90 @@
 // GameState.swift
 // AstroTerm - Oyun durumu ve puan yönetimi
 
-import Foundation
+import SwiftUI
+
+/// Oyuncunun seçebileceği farklı gemi türlerini tanımlar
+struct AstroShip: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let imageName: String
+    let maxLives: Int
+    let description: String
+    let difficultyTitle: String
+    let difficultyColor: Color
+    let stats: ShipStats
+    let abilities: ShipAbilities // Yeni: Yetenek barları
+    
+    struct ShipStats: Equatable {
+        let speedMultiplier: CGFloat
+        let size: CGSize
+    }
+    
+    struct ShipAbilities: Equatable {
+        let fireRate: Double // 0.0 - 1.0
+        let agility: Double  // 0.0 - 1.0
+        let armor: Double    // 0.0 - 1.0
+    }
+    
+    struct EngineConfig: Equatable {
+        let offsets: [CGPoint]
+        let particleColor: Color
+        let glowSize: CGSize
+    }
+    
+    let engineConfig: EngineConfig
+    
+    static let ships: [AstroShip] = [
+        AstroShip(
+            id: "alpha-beginner",
+            name: "ALPHA-1 EXPLORER",
+            imageName: "ship_beginner",
+            maxLives: 5,
+            description: "Yeni başlayanlar için tasarlandı. Ekstra dayanıklı gövdesi ile galaksiyi güvenle keşfedin.",
+            difficultyTitle: "BAŞLANGIÇ",
+            difficultyColor: .cyan,
+            stats: ShipStats(speedMultiplier: 1.0, size: CGSize(width: 140, height: 100)),
+            abilities: ShipAbilities(fireRate: 0.4, agility: 0.3, armor: 0.9),
+            engineConfig: EngineConfig(
+                offsets: [CGPoint(x: -52, y: 18), CGPoint(x: -52, y: -18)],
+                particleColor: .cyan,
+                glowSize: CGSize(width: 18, height: 10)
+            )
+        ),
+        AstroShip(
+            id: "beta-inter",
+            name: "BETA-DELTA STRIKER",
+            imageName: "ship_intermediate",
+            maxLives: 4,
+            description: "Orta seviye pilotlar için dengeli performans. Hız ve dayanıklılığın mükemmel uyumu.",
+            difficultyTitle: "ORTA SEVİYE",
+            difficultyColor: .orange,
+            stats: ShipStats(speedMultiplier: 1.1, size: CGSize(width: 150, height: 85)),
+            abilities: ShipAbilities(fireRate: 0.7, agility: 0.6, armor: 0.6),
+            engineConfig: EngineConfig(
+                offsets: [CGPoint(x: -60, y: 16), CGPoint(x: -60, y: 0), CGPoint(x: -60, y: -16)],
+                particleColor: .orange,
+                glowSize: CGSize(width: 14, height: 8)
+            )
+        ),
+        AstroShip(
+            id: "gamma-advanced",
+            name: "GAMMA-X INTERCEPTOR",
+            imageName: "ship_advanced",
+            maxLives: 2,
+            description: "Usta dilbilimciler için yüksek riskli makine. Az can, yüksek prestij.",
+            difficultyTitle: "İLERİ SEVİYE",
+            difficultyColor: .purple,
+            stats: ShipStats(speedMultiplier: 1.25, size: CGSize(width: 160, height: 80)),
+            abilities: ShipAbilities(fireRate: 0.9, agility: 1.0, armor: 0.2),
+            engineConfig: EngineConfig(
+                offsets: [CGPoint(x: -65, y: 14), CGPoint(x: -65, y: 0), CGPoint(x: -65, y: -14)],
+                particleColor: .purple,
+                glowSize: CGSize(width: 12, height: 6)
+            )
+        ),
+    ]
+}
 
 /// Oyunun anlık durumunu tutan model
 struct GameState: Codable {
@@ -111,10 +194,10 @@ struct GameState: Codable {
     }
 
     // MARK: - Sıfırlama
-    mutating func reset() {
+    mutating func reset(customMaxLives: Int = 3) {
         score = 0
-        lives = 3
-        maxLives = 3
+        self.maxLives = customMaxLives
+        self.lives = customMaxLives
         hp = 1.0
         currentLevel = .a1
         correctStreak = 0

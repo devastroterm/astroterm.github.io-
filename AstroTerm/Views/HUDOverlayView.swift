@@ -14,77 +14,79 @@ struct HUDOverlayView: View {
     var onPauseTap: () -> Void
 
     var body: some View {
-        ZStack {
-            // MARK: - SOL ÜST: Avatar + HP + Skor
-            VStack(alignment: .leading, spacing: 4) {
-                topLeftHUD
-                Spacer()
-
-                // MARK: - SOL ALT: Joystick
-                HStack {
-                    joystickControl
+        GeometryReader { geo in
+            ZStack {
+                // MARK: - SOL ÜST: Avatar + HP + Skor
+                VStack(alignment: .leading, spacing: 4) {
+                    topLeftHUD
                     Spacer()
+
+                    // MARK: - SOL ALT: Joystick
+                    HStack {
+                        joystickControl
+                        Spacer()
+                    }
+                    .padding(.bottom, max(12, geo.safeAreaInsets.bottom / 2))
+                    .padding(.leading, max(16, geo.safeAreaInsets.leading))
                 }
-                .padding(.bottom, 4)
-                .padding(.leading, 16)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(.top, 16)
-            .padding(.leading, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.top, max(12, geo.safeAreaInsets.top))
+                .padding(.leading, max(16, geo.safeAreaInsets.leading))
 
-            // MARK: - SAĞ ÜST/ALT: Ses Ayarları + Duraklat + Aksiyon Butonları
-            VStack {
-                HStack(spacing: 12) {
-                    Spacer()
-                    
-                    // Ses Kontrolleri
-                    audioToggles
-                    
-                    pauseButton
-                }
-                .padding(.top, 16)
-                .padding(.trailing, 16)
-                
-                Spacer()
-
-                // MARK: - SAĞ ALT: Aksiyon Butonları
-                HStack {
-                    Spacer()
-                    actionButtons
-                        .padding(.bottom, 24)
-                        .padding(.trailing, 16)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-
-            // MARK: - ORTA ÜST: Türkçe Kelime Paneli
-            VStack {
-                turkishWordPanel
-                    .padding(.top, 20)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-            // MARK: - KOMBO İndikatörü
-            if viewModel.isComboActive {
+                // MARK: - SAĞ ÜST/ALT: Ses Ayarları + Duraklat + Aksiyon Butonları
                 VStack {
-                    comboIndicator
-                        .padding(.top, 95)
+                    HStack(spacing: 12) {
+                        Spacer()
+                        
+                        // Ses Kontrolleri
+                        audioToggles
+                        
+                        pauseButton
+                    }
+                    .padding(.top, max(12, geo.safeAreaInsets.top))
+                    .padding(.trailing, max(16, geo.safeAreaInsets.trailing))
+                    
+                    Spacer()
+
+                    // MARK: - SAĞ ALT: Aksiyon Butonları
+                    HStack {
+                        Spacer()
+                        actionButtons
+                            .padding(.bottom, max(12, geo.safeAreaInsets.bottom))
+                            .padding(.trailing, max(16, geo.safeAreaInsets.trailing))
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+
+                // MARK: - ORTA ÜST: Türkçe Kelime Paneli
+                VStack {
+                    turkishWordPanel
+                        .padding(.top, max(12, geo.safeAreaInsets.top))
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            }
 
-            // MARK: - Puan Popup
-            if viewModel.showScorePopup {
-                scorePopupView
+                // MARK: - KOMBO İndikatörü
+                if viewModel.isComboActive {
+                    VStack {
+                        comboIndicator
+                            .padding(.top, 95 + geo.safeAreaInsets.top)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
+
+                // MARK: - Puan Popup
+                if viewModel.showScorePopup {
+                    scorePopupView
+                }
             }
         }
     }
 
     // MARK: - Sol Üst HUD (Avatar + HP + Skor)
     private var topLeftHUD: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .center, spacing: 12) {
             // Astronot Avatar
             ZStack {
                 // Dış halka — level rengine göre parlıyor
@@ -98,33 +100,33 @@ struct HUDOverlayView: View {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 3
+                        lineWidth: 2.5
                     )
-                    .frame(width: 58, height: 58)
+                    .frame(width: 44, height: 44)
 
                 // İç dolgu — cam efekti
                 Circle()
                     .fill(Color.white.opacity(0.08))
-                    .frame(width: 52, height: 52)
-                    .shadow(color: levelBadgeColor.opacity(0.30), radius: 10)
+                    .frame(width: 40, height: 40)
+                    .shadow(color: levelBadgeColor.opacity(0.30), radius: 8)
 
                 // Astronot emoji
                 Text("👨‍🚀")
-                    .font(.system(size: 32))
+                    .font(.system(size: 24))
             }
-            .shadow(color: levelBadgeColor.opacity(0.40), radius: 12, x: 0, y: 0)
+            .shadow(color: levelBadgeColor.opacity(0.40), radius: 10, x: 0, y: 0)
 
             // HP Barı + Skor Katmanı
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 // HP çubuğu
                 ZStack(alignment: .leading) {
                     // Arka plan
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 5)
                         .fill(Color.white.opacity(0.08))
-                        .frame(width: 140, height: 14)
+                        .frame(width: 110, height: 10)
                     
                     // Dolgu
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 5)
                         .fill(
                             LinearGradient(
                                 colors: hpBarColors,
@@ -132,11 +134,11 @@ struct HUDOverlayView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: max(4, 140 * viewModel.hp), height: 14)
+                        .frame(width: max(3.5, 110 * viewModel.hp), height: 10)
                         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.hp)
                         
                     // Parlama efekti
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 5)
                         .fill(
                             LinearGradient(
                                 colors: [Color.white.opacity(0.3), Color.clear],
@@ -144,41 +146,41 @@ struct HUDOverlayView: View {
                                 endPoint: .bottom
                             )
                         )
-                        .frame(width: max(4, 140 * viewModel.hp), height: 7)
+                        .frame(width: max(3.5, 110 * viewModel.hp), height: 5)
                 }
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(Color.white.opacity(0.20), lineWidth: 1.5)
+                    RoundedRectangle(cornerRadius: 5)
+                        .strokeBorder(Color.white.opacity(0.20), lineWidth: 1.2)
                 )
-                .shadow(color: (hpBarColors.first ?? .green).opacity(0.3), radius: 5)
+                .shadow(color: (hpBarColors.first ?? .green).opacity(0.3), radius: 4)
 
                 // SKOR
-                HStack(spacing: 5) {
+                HStack(spacing: 4) {
                     Text("SCORE:")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
                         .foregroundColor(Color.white.opacity(0.60))
                         
                     Text("\(viewModel.score)")
-                        .font(.system(size: 18, weight: .black, design: .monospaced))
+                        .font(.system(size: 15, weight: .black, design: .monospaced))
                         .foregroundColor(Color(red: 0.95, green: 0.90, blue: 0.20))
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.3), value: viewModel.score)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2.5)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 7)
                         .fill(Color.black.opacity(0.40))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color.white.opacity(0.15), lineWidth: 0.7))
                 )
-                .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
+                .shadow(color: Color.black.opacity(0.2), radius: 3, x: 0, y: 1.5)
             }
         }
-        .padding(10)
+        .padding(8)
         .background(
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(Color.black.opacity(0.25))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
         )
     }
 

@@ -23,9 +23,20 @@ struct GameContainerView: View {
             ZStack {
                 // MARK: - SpriteKit Sahnesi (Arka Plan)
                 if let gameScene = scene {
-                    SpriteView(scene: gameScene, options: [.allowsTransparency])
-                        .ignoresSafeArea()
-                        .frame(width: geo.size.width, height: geo.size.height)
+                    ZStack {
+                        // Tüm Seviyeler için Dinamik Renkli Lottie Arka Planı
+                        LottieView(filename: "Space", color: UIColor(viewModel.currentLevel.themeColor))
+                            .overlay(viewModel.currentLevel.themeColor.opacity(0.2)) // Tüm atmosferi boyamak için overlay ekle
+                            .ignoresSafeArea()
+                        
+                        SpriteView(
+                            scene: gameScene,
+                            preferredFramesPerSecond: 60, // Batarya dostu 60 FPS (120Hz ekrana gerek yok)
+                            options: [.allowsTransparency, .ignoresSiblingOrder, .shouldCullNonVisibleNodes]
+                        )
+                            .ignoresSafeArea()
+                            .frame(width: geo.size.width, height: geo.size.height)
+                    }
                 }
 
                 // MARK: - SwiftUI HUD (Ön Plan)
@@ -47,7 +58,6 @@ struct GameContainerView: View {
                             }
                         }
                     )
-                    .ignoresSafeArea()
                 }
 
                 // MARK: - Duraklat Menüsü
@@ -146,7 +156,7 @@ struct GameContainerView: View {
         let newScene = GameScene()
         newScene.viewModel = viewModel
         newScene.scaleMode = .resizeFill
-        newScene.backgroundColor = UIColor(red: 0.05, green: 0.07, blue: 0.18, alpha: 1.0)
+        newScene.backgroundColor = .clear
         scene = newScene
     }
 }
@@ -163,108 +173,110 @@ struct DialogueOverlayView: View {
     @State private var textTimer: Timer?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Arka Plan Karartma (Tıklanabilir)
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    handleDismiss()
-                }
-
-            // MARK: - Diyalog Barı
-            HStack(alignment: .bottom, spacing: 0) {
-                // SOL: Karakter Portresi
-                ZStack {
-                    // Portre Çerçevesi (Futuristic)
-                    Rectangle()
-                        .fill(Color.black.opacity(0.8))
-                        .frame(width: 110, height: 110)
-                        .overlay(
-                            Rectangle()
-                                .stroke(Color.cyan.opacity(0.5), lineWidth: 2)
-                        )
-                    
-                    Image(dialogue.portraitImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 100, height: 100)
-                        .clipped()
-                        .overlay(
-                            // Portre üzerine hafif cyan tarama çizgileri efekti
-                            VStack(spacing: 2) {
-                                ForEach(0..<20) { _ in
-                                    Rectangle()
-                                        .fill(Color.cyan.opacity(0.05))
-                                        .frame(height: 1)
-                                }
-                            }
-                        )
-                }
-                .padding(.leading, 16)
-                .padding(.bottom, 16)
-                .shadow(color: .cyan.opacity(0.3), radius: 8)
-
-                // SAĞ: Metin Alanı
-                VStack(alignment: .leading, spacing: 6) {
-                    // Karakter Adı
-                    Text(dialogue.characterName.uppercased())
-                        .font(.system(size: 13, weight: .black, design: .monospaced))
-                        .foregroundColor(.cyan)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.cyan.opacity(0.2))
-                    
-                    // Diyalog Metni (Glowing Cyan)
-                    ScrollView {
-                        Text(displayedText)
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .shadow(color: .cyan.opacity(0.7), radius: 4)
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
+        GeometryReader { geo in
+            ZStack(alignment: .bottom) {
+                // Arka Plan Karartma (Tıklanabilir)
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        handleDismiss()
                     }
-                    .frame(maxHeight: 70)
 
-                    // "Devam etmek için dokun" ipucu
-                    HStack {
-                        Spacer()
-                        Text("DEVAM >>")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundColor(.cyan.opacity(0.6))
-                            .opacity(alpha)
-                            .animation(.easeInOut(duration: 0.8).repeatForever(), value: alpha)
-                    }
-                }
-                .padding(.leading, 16)
-                .padding(.trailing, 24)
-                .padding(.vertical, 20)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    // Yarı saydam koyu bar
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    Color.black.opacity(0.95),
-                                    Color.black.opacity(0.8)
-                                ]),
-                                startPoint: .leading,
-                                endPoint: .trailing
+                // MARK: - Diyalog Barı
+                HStack(alignment: .bottom, spacing: 0) {
+                    // SOL: Karakter Portresi
+                    ZStack {
+                        // Portre Çerçevesi (Futuristic)
+                        Rectangle()
+                            .fill(Color.black.opacity(0.8))
+                            .frame(width: 110, height: 110)
+                            .overlay(
+                                Rectangle()
+                                    .stroke(Color.cyan.opacity(0.5), lineWidth: 2)
                             )
-                        )
-                        .overlay(
-                            // Üst ve Alt Cyber Sınırlar
-                            VStack {
-                                Rectangle().fill(Color.cyan.opacity(0.4)).frame(height: 1)
-                                Spacer()
-                                Rectangle().fill(Color.cyan.opacity(0.2)).frame(height: 1)
-                            }
-                        )
-                )
+                        
+                        Image(dialogue.portraitImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 100, height: 100)
+                            .clipped()
+                            .overlay(
+                                // Portre üzerine hafif cyan tarama çizgileri efekti
+                                VStack(spacing: 2) {
+                                    ForEach(0..<20) { _ in
+                                        Rectangle()
+                                            .fill(Color.cyan.opacity(0.05))
+                                            .frame(height: 1)
+                                    }
+                                }
+                            )
+                    }
+                    .padding(.leading, max(16, geo.safeAreaInsets.leading))
+                    .padding(.bottom, max(16, geo.safeAreaInsets.bottom))
+                    .shadow(color: .cyan.opacity(0.3), radius: 8)
+
+                    // SAĞ: Metin Alanı
+                    VStack(alignment: .leading, spacing: 6) {
+                        // Karakter Adı
+                        Text(dialogue.characterName.uppercased())
+                            .font(.system(size: 13, weight: .black, design: .monospaced))
+                            .foregroundColor(.cyan)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.cyan.opacity(0.2))
+                        
+                        // Diyalog Metni (Glowing Cyan)
+                        ScrollView {
+                            Text(displayedText)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .shadow(color: .cyan.opacity(0.7), radius: 4)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxHeight: 70)
+
+                        // "Devam etmek için dokun" ipucu
+                        HStack {
+                            Spacer()
+                            Text("DEVAM >>")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundColor(.cyan.opacity(0.6))
+                                .opacity(alpha)
+                                .animation(.easeInOut(duration: 0.8).repeatForever(), value: alpha)
+                        }
+                    }
+                    .padding(.leading, 16)
+                    .padding(.trailing, max(24, geo.safeAreaInsets.trailing))
+                    .padding(.vertical, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        // Yarı saydam koyu bar
+                        Rectangle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.black.opacity(0.95),
+                                        Color.black.opacity(0.8)
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .overlay(
+                                // Üst ve Alt Cyber Sınırlar
+                                VStack {
+                                    Rectangle().fill(Color.cyan.opacity(0.4)).frame(height: 1)
+                                    Spacer()
+                                    Rectangle().fill(Color.cyan.opacity(0.2)).frame(height: 1)
+                                }
+                            )
+                    )
+                }
+                .frame(height: 140 + geo.safeAreaInsets.bottom / 2)
+                .offset(y: barOffset)
+                .opacity(alpha)
             }
-            .frame(height: 140)
-            .offset(y: barOffset)
-            .opacity(alpha)
         }
         .onAppear {
             startDialogue()

@@ -8,9 +8,8 @@ final class PlayerShipNode: SKNode {
 
     // MARK: - Alt Düğümler
     private var shipSprite: SKSpriteNode!
-    private var engineGlowLeft: SKShapeNode!
-    private var engineGlowRight: SKShapeNode!
-    private var engineEmitter: SKEmitterNode?
+    private var engineGlows: [SKShapeNode] = []
+    private var engineEmitters: [SKEmitterNode] = []
     private var targetingReticle: SKShapeNode!
 
     // MARK: - Hareket Durumu
@@ -21,14 +20,29 @@ final class PlayerShipNode: SKNode {
     // MARK: - Fizik Kategorileri (GameScene ile paylaşılır)
     static let physicsCategory: UInt32 = 0x1 << 0
 
-    // MARK: - Gemi boyutu (orijinal SKShapeNode ile uyumlu)
-    private let shipSize = CGSize(width: 120, height: 90)
+    // MARK: - Gemi boyutu
+    private var shipSize = CGSize(width: 120, height: 90)
+    private var spriteName: String = "ship_beginner"
 
     // MARK: - Başlatma
+    init(ship: AstroShip) {
+        self.spriteName = ship.imageName
+        self.shipSize = ship.stats.size
+        super.init()
+        buildShip()
+        buildEngineGlow(for: ship)
+        buildTargetingReticle()
+        setupPhysics()
+        startIdleAnimation()
+    }
+    
+    // Eski init (Geriye dönük uyumluluk veya test için)
     override init() {
         super.init()
         buildShip()
-        buildEngineGlow()
+        if let defaultShip = AstroShip.ships.first {
+            buildEngineGlow(for: defaultShip)
+        }
         buildTargetingReticle()
         setupPhysics()
         startIdleAnimation()
@@ -40,35 +54,36 @@ final class PlayerShipNode: SKNode {
 
     // MARK: - Sprite Gemi
     private func buildShip() {
-        shipSprite = SKSpriteNode(imageNamed: "player_ship")
+        shipSprite = SKSpriteNode(imageNamed: spriteName)
         shipSprite.size = shipSize
-        // Yeni görsel: burun sağa, motorlar sola — flip gerekmez.
         shipSprite.zPosition = 2
         addChild(shipSprite)
     }
 
-    // MARK: - Motor Işıltısı (sprite'ın sağ kenarına yerleştir)
-    private func buildEngineGlow() {
-        // Görseldeki motorlar sağ tarafta — xScale = -1 ile gemi döndüğünde
-        // Gemi sağa baktığından motor arkada = negatif x tarafı
-        let glowOffset: CGFloat = -52
-        let positions: [(CGFloat, CGFloat)] = [(glowOffset, 10), (glowOffset, -10)]
-
-        for (i, pos) in positions.enumerated() {
-            let glow = SKShapeNode(ellipseOf: CGSize(width: 18, height: 10))
-            glow.position = CGPoint(x: pos.0, y: pos.1)
-            glow.fillColor = UIColor(red: 0.30, green: 0.60, blue: 1.0, alpha: 0.90)
-            glow.strokeColor = UIColor(red: 0.60, green: 0.80, blue: 1.0, alpha: 0.60)
+    // MARK: - Motor Işıltısı (Gemiye göre yapılandır)
+    private func buildEngineGlow(for ship: AstroShip) {
+        let config = ship.engineConfig
+        let color = UIColor(config.particleColor)
+        
+        for pos in config.offsets {
+            // Ana ışıltı
+            let glow = SKShapeNode(ellipseOf: config.glowSize)
+            glow.position = pos
+            glow.fillColor = color.withAlphaComponent(0.9)
+            glow.strokeColor = color.withAlphaComponent(0.6)
             glow.lineWidth = 2
             glow.zPosition = 0
-
-            let outerGlow = SKShapeNode(ellipseOf: CGSize(width: 26, height: 16))
-            outerGlow.position = CGPoint(x: pos.0 - 4, y: pos.1)
-            outerGlow.fillColor = UIColor(red: 0.20, green: 0.40, blue: 1.0, alpha: 0.20)
+            
+            // Dış hale
+            let outerSize = CGSize(width: config.glowSize.width * 1.5, height: config.glowSize.height * 1.6)
+            let outerGlow = SKShapeNode(ellipseOf: outerSize)
+            outerGlow.position = CGPoint(x: pos.x - 4, y: pos.y)
+            outerGlow.fillColor = color.withAlphaComponent(0.2)
             outerGlow.strokeColor = .clear
             outerGlow.zPosition = -1
             addChild(outerGlow)
 
+            // Titreme efekti
             let flicker = SKAction.sequence([
                 SKAction.scaleX(to: 1.2, y: 0.8, duration: 0.20),
                 SKAction.scaleX(to: 0.85, y: 1.15, duration: 0.15),
@@ -77,61 +92,45 @@ final class PlayerShipNode: SKNode {
             glow.run(SKAction.repeatForever(flicker))
 
             addChild(glow)
-            if i == 0 { engineGlowLeft = glow } else { engineGlowRight = glow }
+            engineGlows.append(glow)
+            
+            // Parçacık sistemi
+            setupEngineEmitter(at: pos, color: color)
         }
-
-        setupEngineEmitter()
     }
 
-    private func setupEngineEmitter() {
+    private func setupEngineEmitter(at position: CGPoint, color: UIColor) {
         let emitter = SKEmitterNode()
-        emitter.particleBirthRate = 60
-        emitter.particleLifetime = 0.5
-        emitter.particleLifetimeRange = 0.2
-        emitter.particlePositionRange = CGVector(dx: 0, dy: 14)
-        emitter.particleSpeed = 80
-        emitter.particleSpeedRange = 30
-        emitter.particleAlpha = 0.8
-        emitter.particleAlphaRange = 0.2
-        emitter.particleAlphaSpeed = -1.6
-        emitter.particleScale = 0.08
-        emitter.particleScaleRange = 0.04
+        emitter.particleBirthRate = 20
+        emitter.particleLifetime = 0.22
+        emitter.particleLifetimeRange = 0.08
+        emitter.particlePositionRange = CGVector(dx: 0, dy: 5)
+        emitter.particleSpeed = 90
+        emitter.particleSpeedRange = 35
+        emitter.particleAlpha = 0.6
+        emitter.particleAlphaRange = 0.15
+        emitter.particleAlphaSpeed = -2.5
+        emitter.particleScale = 0.05
+        emitter.particleScaleRange = 0.02
         emitter.particleScaleSpeed = -0.12
-        emitter.particleColor = UIColor(red: 0.50, green: 0.75, blue: 1.0, alpha: 1.0)
+        emitter.particleColor = color
         emitter.particleColorBlendFactor = 1.0
         emitter.particleBlendMode = .add
-        // Motor arkada (-x), parçacıklar sola doğru fırlar (angle = π)
-        emitter.emissionAngle = .pi
-        emitter.emissionAngleRange = 0.3
-        emitter.position = CGPoint(x: -55, y: 0)
+
+        emitter.emissionAngle = .pi // Sola doğru
+        emitter.emissionAngleRange = 0.2
+        emitter.position = position
         emitter.zPosition = -2
-        engineEmitter = emitter
+
         addChild(emitter)
+        engineEmitters.append(emitter)
     }
 
-    // MARK: - Nişan Alma Retiküle
+    // MARK: - Nişan Alma Retiküle (Kaldırıldı)
     private func buildTargetingReticle() {
         targetingReticle = SKShapeNode(circleOfRadius: 18)
-        targetingReticle.strokeColor = UIColor(red: 0.30, green: 1.0, blue: 0.50, alpha: 0.80)
-        targetingReticle.fillColor = .clear
-        targetingReticle.lineWidth = 1.5
-        targetingReticle.zPosition = 10
         targetingReticle.alpha = 0
-
-        let rotate = SKAction.rotate(byAngle: .pi * 2, duration: 2.0)
-        targetingReticle.run(SKAction.repeatForever(rotate))
-
-        for i in 0..<4 {
-            let angle = CGFloat(i) * .pi / 2
-            let path = CGMutablePath()
-            path.move(to: CGPoint(x: cos(angle) * 20, y: sin(angle) * 20))
-            path.addLine(to: CGPoint(x: cos(angle) * 28, y: sin(angle) * 28))
-            let dash = SKShapeNode(path: path)
-            dash.strokeColor = UIColor(red: 0.30, green: 1.0, blue: 0.50, alpha: 0.80)
-            dash.lineWidth = 1.5
-            targetingReticle.addChild(dash)
-        }
-        addChild(targetingReticle)
+        // addChild(targetingReticle) // Kullanıcı isteğiyle retikül kaldırıldı
     }
 
     // MARK: - Fizik

@@ -146,17 +146,17 @@ final class BulletNode: SKNode {
     // MARK: - İz Parçacık Emitter
     private func setupTrailEmitter(color: UIColor, direction: CGFloat) {
         let emitter = SKEmitterNode()
-        emitter.particleBirthRate = 45   // 80'den indirildi
-        emitter.particleLifetime = 0.20
-        emitter.particleLifetimeRange = 0.08
+        emitter.particleBirthRate = 12
+        emitter.particleLifetime = 0.12
+        emitter.particleLifetimeRange = 0.04
         emitter.particlePositionRange = CGVector(dx: 2, dy: 3)
-        emitter.particleSpeed = 20
-        emitter.particleSpeedRange = 10
-        emitter.particleAlpha = 0.7
-        emitter.particleAlphaSpeed = -3.5
+        emitter.particleSpeed = 18
+        emitter.particleSpeedRange = 8
+        emitter.particleAlpha = 0.6
+        emitter.particleAlphaSpeed = -5.0
         emitter.particleScale = 0.06
         emitter.particleScaleRange = 0.02
-        emitter.particleScaleSpeed = -0.20
+        emitter.particleScaleSpeed = -0.25
         emitter.particleColor = color
         emitter.particleColorBlendFactor = 1.0
         emitter.particleBlendMode = .add
