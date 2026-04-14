@@ -15,10 +15,12 @@ final class AdManager: NSObject {
         static let rewardedTest     = "ca-app-pub-3940256099942544/1712485313"
         static let interstitialTest = "ca-app-pub-3940256099942544/4411468910"
 
-        // ⚠️ rewardedProd: AdMob konsolundaki Rewarded Ad Unit ID'ni gir
-        //    Format: ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY  (ortada / olmalı)
+        // ⚠️ rewardedProd: AdMob konsolundaki Ödüllü Reklam birimi ID'si
         static let rewardedProd     = "ca-app-pub-7827833155145240/1673721117"
-        static let interstitialProd = "ca-app-pub-7827833155145240/1673721117"
+        
+        // ⚠️ interstitialProd: Buraya Geçiş Reklamı (Interstitial) ID'sini girin
+        // Not: Ödüllü reklam ID'sini buraya yazmak çakışmaya neden olabilir.
+        static let interstitialProd = "" 
 
         #if DEBUG
         static let rewarded     = rewardedTest
@@ -40,12 +42,19 @@ final class AdManager: NSObject {
 
     // Reklam henüz hazır değilken gelen bekleyen istek
     private var pendingRewardedCompletion: ((Bool) -> Void)?
+    
+    /// En son alınan reklam hatası (Hata ayıklama için)
+    private(set) var lastErrorMessage: String? = nil
 
     // MARK: - SDK Başlatma
     static func setup() {
         GADMobileAds.sharedInstance().start { _ in
             AdManager.shared.preloadRewardedAd()
-            AdManager.shared.preloadInterstitialAd()
+            
+            // Sadece bir ID tanımlıysa Interstitial yüklemeyi atla (ID çakışmasını önlemek için)
+            if !AdUnitID.interstitial.isEmpty && AdUnitID.interstitial != AdUnitID.rewarded {
+                AdManager.shared.preloadInterstitialAd()
+            }
         }
     }
 
@@ -56,7 +65,10 @@ final class AdManager: NSObject {
             guard let self else { return }
 
             if let error {
-                print("[AdMob] Rewarded yükleme hatası: \(error.localizedDescription)")
+                let msg = "[AdMob] Rewarded yükleme hatası: \(error.localizedDescription)"
+                print(msg)
+                self.lastErrorMessage = error.localizedDescription
+                
                 // Bekleyen istek varsa hata bildir
                 if let cb = self.pendingRewardedCompletion {
                     self.pendingRewardedCompletion = nil
@@ -68,6 +80,8 @@ final class AdManager: NSObject {
                 }
                 return
             }
+
+            self.lastErrorMessage = nil
 
             self.loadedRewardedAd = ad
             self.loadedRewardedAd?.fullScreenContentDelegate = self
@@ -101,6 +115,8 @@ final class AdManager: NSObject {
             
             if let error {
                 print("[AdMob] Interstitial yükleme hatası: \(error.localizedDescription)")
+                self.lastErrorMessage = error.localizedDescription
+                
                 if let cb = self.pendingInterstitialCompletion {
                     self.pendingInterstitialCompletion = nil
                     DispatchQueue.main.async { cb() }
@@ -110,6 +126,7 @@ final class AdManager: NSObject {
                 }
                 return
             }
+            self.lastErrorMessage = nil
             self.loadedInterstitialAd = ad
             self.loadedInterstitialAd?.fullScreenContentDelegate = self
             print("[AdMob] Interstitial reklam hazır")
@@ -147,11 +164,12 @@ final class AdManager: NSObject {
             preloadRewardedAd()
             
             // ── TIMEOUT ──
-            // Eğer reklam 3 saniye içinde hazır olmazsa UI kilitlenmesin diye hata döndür
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            // Eğer reklam 7 saniye içinde hazır olmazsa UI kilitlenmesin diye hata döndür
+            DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) { [weak self] in
                 guard let self = self else { return }
                 if let cb = self.pendingRewardedCompletion {
                     print("[AdMob] Rewarded timeout süresi aşıldı.")
+                    self.lastErrorMessage = "Bağlantı zaman aşımına uğradı (AdMob Timeout)"
                     self.pendingRewardedCompletion = nil
                     cb(false)
                 }
@@ -207,6 +225,20 @@ final class AdManager: NSObject {
             .first?.windows
             .first(where: \.isKeyWindow)?
             .rootViewController
+    }
+
+    // MARK: - Hata Teşhis (Debug)
+    func showAdDebugMessage(from vc: UIViewController? = nil) {
+        guard let currentVC = vc ?? rootViewController(),
+              let error = lastErrorMessage else { return }
+        
+        let alert = UIAlertController(
+            title: "Reklam Yüklenemedi",
+            message: "Hata detayı: \(error)\n\n(Bu mesaj sadece teşhis içindir, uygulama doğrulanınca reklamlar gelecektir.)",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Tamam", style: .default))
+        currentVC.present(alert, animated: true)
     }
 }
 

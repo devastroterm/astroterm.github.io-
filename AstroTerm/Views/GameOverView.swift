@@ -227,6 +227,9 @@ struct GameOverView: View {
                 showRewardedStartBadge = false
                 if success {
                     onRevive()
+                } else {
+                    // Reklam başarısızsa hata mesajını göster (Teşhis için)
+                    AdManager.shared.showAdDebugMessage()
                 }
             }
         }
